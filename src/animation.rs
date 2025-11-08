@@ -260,15 +260,33 @@ impl AnimationEngine {
     /// Generate animation steps for a file change
     fn generate_steps_for_file(&mut self, change: &FileChange) {
         let mut current_cursor_line = 0;
+        let mut line_offset = 0i64; // Track how buffer lines differ from old file
 
         // Process each hunk
         for hunk in &change.hunks {
-            // Move cursor line by line to the start of the hunk
-            let target_line = hunk.old_start;
+            // Calculate target line in current buffer
+            // hunk.old_start is the line number in the old file
+            // We need to adjust it by how many lines we've added/removed so far
+            let target_line = ((hunk.old_start as i64) + line_offset) as usize;
+
             current_cursor_line =
                 self.generate_cursor_movement(current_cursor_line, target_line);
 
-            current_cursor_line = self.generate_steps_for_hunk(hunk, current_cursor_line);
+            let (final_cursor_line, _final_buffer_line) =
+                self.generate_steps_for_hunk(hunk, current_cursor_line, target_line);
+
+            current_cursor_line = final_cursor_line;
+
+            // Update offset based on changes in this hunk
+            // Count additions and deletions to update the offset
+            let additions = hunk.lines.iter()
+                .filter(|l| matches!(l.change_type, LineChangeType::Addition))
+                .count() as i64;
+            let deletions = hunk.lines.iter()
+                .filter(|l| matches!(l.change_type, LineChangeType::Deletion))
+                .count() as i64;
+
+            line_offset += additions - deletions;
 
             // Add pause between hunks
             self.steps.push(AnimationStep::Pause { duration_ms: 1500 });
@@ -300,11 +318,16 @@ impl AnimationEngine {
     }
 
     /// Generate animation steps for a diff hunk
-    /// Returns the final cursor line position
-    fn generate_steps_for_hunk(&mut self, hunk: &DiffHunk, start_line: usize) -> usize {
+    /// Returns (final_cursor_line, final_buffer_line)
+    fn generate_steps_for_hunk(
+        &mut self,
+        hunk: &DiffHunk,
+        start_cursor_line: usize,
+        start_buffer_line: usize,
+    ) -> (usize, usize) {
         // buffer_line tracks the actual line number in the current buffer
-        let mut buffer_line = hunk.old_start;
-        let mut cursor_line = start_line;
+        let mut buffer_line = start_buffer_line;
+        let mut cursor_line = start_cursor_line;
 
         for line_change in &hunk.lines {
             match line_change.change_type {
@@ -355,7 +378,7 @@ impl AnimationEngine {
             }
         }
 
-        cursor_line
+        (cursor_line, buffer_line)
     }
 
     /// Update animation state and return true if display needs refresh
