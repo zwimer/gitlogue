@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["unhappychoice"]
 description = "A Git history screensaver - watch your code rewrite itself"
-license = "MIT"
+license = "ISC"
 repository = "https://github.com/unhappychoice/gitlogue"
 
 [dependencies]
