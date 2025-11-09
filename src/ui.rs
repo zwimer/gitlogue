@@ -10,6 +10,8 @@ use ratatui::{
     Frame, Terminal,
 };
 use std::io;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::animation::AnimationEngine;
@@ -33,10 +35,14 @@ pub struct UI<'a> {
     engine: AnimationEngine,
     metadata: Option<CommitMetadata>,
     repo: Option<&'a GitRepository>,
+    should_exit: Arc<AtomicBool>,
 }
 
 impl<'a> UI<'a> {
     pub fn new(speed_ms: u64, _is_commit_specified: bool, repo: Option<&'a GitRepository>) -> Self {
+        let should_exit = Arc::new(AtomicBool::new(false));
+        Self::setup_signal_handler(should_exit.clone());
+
         Self {
             state: UIState::Playing,
             speed_ms,
@@ -47,7 +53,15 @@ impl<'a> UI<'a> {
             engine: AnimationEngine::new(speed_ms),
             metadata: None,
             repo,
+            should_exit,
         }
+    }
+
+    fn setup_signal_handler(should_exit: Arc<AtomicBool>) {
+        ctrlc::set_handler(move || {
+            should_exit.store(true, Ordering::Relaxed);
+        })
+        .expect("Error setting Ctrl-C handler");
     }
 
     pub fn load_commit(&mut self, metadata: CommitMetadata) {
@@ -65,6 +79,12 @@ impl<'a> UI<'a> {
 
         let result = self.run_loop(&mut terminal);
 
+        self.cleanup(&mut terminal)?;
+
+        result
+    }
+
+    fn cleanup(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
         disable_raw_mode()?;
         execute!(
             terminal.backend_mut(),
@@ -72,12 +92,16 @@ impl<'a> UI<'a> {
             DisableMouseCapture
         )?;
         terminal.show_cursor()?;
-
-        result
+        Ok(())
     }
 
     fn run_loop(&mut self, terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
         loop {
+            // Check for Ctrl+C signal
+            if self.should_exit.load(Ordering::Relaxed) {
+                self.state = UIState::Finished;
+            }
+
             // Update viewport height for scroll calculation
             // Main content area height - status bar (3) - borders (2) = editor height
             let size = terminal.size()?;
@@ -98,11 +122,8 @@ impl<'a> UI<'a> {
 
             if event::poll(std::time::Duration::from_millis(1))? {
                 if let Event::Key(key) = event::read()? {
-                    match key.code {
-                        KeyCode::Char('q') | KeyCode::Esc => {
-                            self.state = UIState::Finished;
-                        }
-                        _ => {}
+                    if key.code == KeyCode::Esc {
+                        self.state = UIState::Finished;
                     }
                 }
             }
