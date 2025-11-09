@@ -106,8 +106,7 @@ pub struct CommitMetadata {
 
 impl GitRepository {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let repo = Repository::open(path)
-            .context("Failed to open Git repository")?;
+        let repo = Repository::open(path).context("Failed to open Git repository")?;
         Ok(Self {
             repo,
             commit_cache: RefCell::new(None),
@@ -115,13 +114,12 @@ impl GitRepository {
     }
 
     pub fn get_commit(&self, hash: &str) -> Result<CommitMetadata> {
-        let obj = self.repo
+        let obj = self
+            .repo
             .revparse_single(hash)
             .context("Invalid commit hash or commit not found")?;
 
-        let commit = obj
-            .peel_to_commit()
-            .context("Object is not a commit")?;
+        let commit = obj.peel_to_commit().context("Object is not a commit")?;
 
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
@@ -167,8 +165,7 @@ impl GitRepository {
         let author = commit.author();
         let author_name = author.name().unwrap_or("Unknown").to_string();
         let timestamp = author.when().seconds();
-        let date = DateTime::from_timestamp(timestamp, 0)
-            .unwrap_or_else(|| Utc::now());
+        let date = DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now);
         let message = commit.message().unwrap_or("").trim().to_string();
 
         let changes = Self::extract_changes(repo, commit)?;
@@ -220,7 +217,11 @@ impl GitRepository {
                 .to_string();
 
             let old_path = if delta.status() == Delta::Renamed {
-                delta.old_file().path().and_then(|p| p.to_str()).map(String::from)
+                delta
+                    .old_file()
+                    .path()
+                    .and_then(|p| p.to_str())
+                    .map(String::from)
             } else {
                 None
             };
@@ -282,7 +283,8 @@ impl GitRepository {
 
                             for line_idx in 0..num_lines {
                                 if let Ok(line) = patch.line_in_hunk(hunk_idx, line_idx) {
-                                    let content = String::from_utf8_lossy(line.content()).to_string();
+                                    let content =
+                                        String::from_utf8_lossy(line.content()).to_string();
                                     let origin = line.origin();
 
                                     let (change_type, old_no, new_no) = match origin {

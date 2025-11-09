@@ -9,19 +9,29 @@ use ratatui::{
 
 pub struct EditorPane;
 
+struct HighlightContext<'a> {
+    line_content: &'a str,
+    line_num: usize,
+    show_cursor: bool,
+    cursor_col: usize,
+    highlights: &'a [crate::syntax::HighlightSpan],
+    buffer_lines: &'a [String],
+    editing_line: Option<usize>,
+    editing_insert_byte_position: usize,
+    editing_line_byte_offset: isize,
+}
+
 impl EditorPane {
-    fn highlight_line(
-        &self,
-        line_content: &str,
-        line_num: usize,
-        show_cursor: bool,
-        cursor_col: usize,
-        highlights: &[crate::syntax::HighlightSpan],
-        buffer_lines: &[String],
-        editing_line: Option<usize>,
-        editing_insert_byte_position: usize,
-        editing_line_byte_offset: isize,
-    ) -> Vec<Span<'_>> {
+    fn highlight_line(&self, ctx: HighlightContext<'_>) -> Vec<Span<'_>> {
+        let line_content = ctx.line_content;
+        let line_num = ctx.line_num;
+        let show_cursor = ctx.show_cursor;
+        let cursor_col = ctx.cursor_col;
+        let highlights = ctx.highlights;
+        let buffer_lines = ctx.buffer_lines;
+        let editing_line = ctx.editing_line;
+        let editing_insert_byte_position = ctx.editing_insert_byte_position;
+        let editing_line_byte_offset = ctx.editing_line_byte_offset;
         let mut spans = Vec::new();
 
         // Calculate byte offset for this line
@@ -51,7 +61,8 @@ impl EditorPane {
 
         // Filter highlights for this line and adjust their ranges
         let line_end = byte_offset + line_content.len();
-        let line_highlights: Vec<_> = highlights.iter()
+        let line_highlights: Vec<_> = highlights
+            .iter()
             .filter_map(|h| {
                 let adjusted_start;
                 let adjusted_end;
@@ -63,7 +74,8 @@ impl EditorPane {
                     // Adjust start position
                     if h.start >= insert_abs_pos {
                         // Highlight is after insertion point - shift it
-                        adjusted_start = (h.start as isize + editing_line_byte_offset).max(0) as usize;
+                        adjusted_start =
+                            (h.start as isize + editing_line_byte_offset).max(0) as usize;
                     } else {
                         adjusted_start = h.start;
                     }
@@ -99,11 +111,17 @@ impl EditorPane {
             let chars: Vec<char> = line_content.chars().collect();
 
             for (char_idx, ch) in chars.iter().enumerate() {
-                let char_byte_start = byte_offset + line_content.chars().take(char_idx).map(|c| c.len_utf8()).sum::<usize>();
+                let char_byte_start = byte_offset
+                    + line_content
+                        .chars()
+                        .take(char_idx)
+                        .map(|c| c.len_utf8())
+                        .sum::<usize>();
                 let char_byte_end = char_byte_start + ch.len_utf8();
 
                 // Find highlight for this character
-                let color = line_highlights.iter()
+                let color = line_highlights
+                    .iter()
                     .find(|h| char_byte_start >= h.0 && char_byte_end <= h.1)
                     .map(|h| h.2.color())
                     .unwrap_or(Color::White);
@@ -137,11 +155,17 @@ impl EditorPane {
             let chars: Vec<char> = line_content.chars().collect();
 
             for (char_idx, ch) in chars.iter().enumerate() {
-                let char_byte_start = byte_offset + line_content.chars().take(char_idx).map(|c| c.len_utf8()).sum::<usize>();
+                let char_byte_start = byte_offset
+                    + line_content
+                        .chars()
+                        .take(char_idx)
+                        .map(|c| c.len_utf8())
+                        .sum::<usize>();
                 let char_byte_end = char_byte_start + ch.len_utf8();
 
                 // Find highlight for this character
-                let color = line_highlights.iter()
+                let color = line_highlights
+                    .iter()
                     .find(|h| char_byte_start >= h.0 && char_byte_end <= h.1)
                     .map(|h| h.2.color())
                     .unwrap_or(Color::White);
@@ -202,17 +226,19 @@ impl EditorPane {
                 spans.push(Span::styled("│ ", Style::default().fg(Color::DarkGray)));
 
                 // Get syntax highlighting for this line
-                let line_spans = self.highlight_line(
+                let line_spans = self.highlight_line(HighlightContext {
                     line_content,
                     line_num,
-                    is_cursor_line && engine.cursor_visible && engine.active_pane == ActivePane::Editor,
-                    engine.buffer.cursor_col,
-                    &highlights,
+                    show_cursor: is_cursor_line
+                        && engine.cursor_visible
+                        && engine.active_pane == ActivePane::Editor,
+                    cursor_col: engine.buffer.cursor_col,
+                    highlights,
                     buffer_lines,
-                    engine.buffer.editing_line,
-                    engine.buffer.editing_insert_byte_position,
-                    engine.buffer.editing_line_byte_offset,
-                );
+                    editing_line: engine.buffer.editing_line,
+                    editing_insert_byte_position: engine.buffer.editing_insert_byte_position,
+                    editing_line_byte_offset: engine.buffer.editing_line_byte_offset,
+                });
                 spans.extend(line_spans);
 
                 Line::from(spans)

@@ -1,29 +1,29 @@
-pub mod rust;
-pub mod typescript;
-pub mod javascript;
-pub mod python;
-pub mod go_lang;
-pub mod ruby;
-pub mod swift;
-pub mod kotlin;
-pub mod java;
-pub mod php;
-pub mod csharp;
 pub mod c;
-pub mod cpp;
-pub mod haskell;
-pub mod dart;
-pub mod scala;
 pub mod clojure;
-pub mod zig;
+pub mod cpp;
+pub mod csharp;
+pub mod css;
+pub mod dart;
 pub mod elixir;
 pub mod erlang;
+pub mod go_lang;
+pub mod haskell;
 pub mod html;
-pub mod css;
+pub mod java;
+pub mod javascript;
 pub mod json;
+pub mod kotlin;
 pub mod markdown;
-pub mod yaml;
+pub mod php;
+pub mod python;
+pub mod ruby;
+pub mod rust;
+pub mod scala;
+pub mod swift;
+pub mod typescript;
 pub mod xml;
+pub mod yaml;
+pub mod zig;
 
 use std::path::Path;
 use tree_sitter::Language;
@@ -44,7 +44,8 @@ pub fn get_language(path: &Path) -> Option<(Language, &'static str)> {
         "php" | "php3" | "php4" | "php5" | "phtml" => Some((php::language(), php::HIGHLIGHT_QUERY)),
         "cs" | "csx" => Some((csharp::language(), csharp::HIGHLIGHT_QUERY)),
         // C++ before C to handle .h files (can be either)
-        "cpp" | "cc" | "cxx" | "c++" | "C" | "CPP" | "hpp" | "hh" | "hxx" | "h++" | "H" | "HPP" | "tcc" | "inl" => Some((cpp::language(), cpp::HIGHLIGHT_QUERY)),
+        "cpp" | "cc" | "cxx" | "c++" | "C" | "CPP" | "hpp" | "hh" | "hxx" | "h++" | "H" | "HPP"
+        | "tcc" | "inl" => Some((cpp::language(), cpp::HIGHLIGHT_QUERY)),
         "c" | "h" => Some((c::language(), c::HIGHLIGHT_QUERY)),
         "hs" | "lhs" => Some((haskell::language(), haskell::HIGHLIGHT_QUERY)),
         "dart" => Some((dart::language(), dart::HIGHLIGHT_QUERY)),

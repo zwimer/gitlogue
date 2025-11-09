@@ -8,6 +8,9 @@ use ratatui::{
 };
 use std::collections::BTreeMap;
 
+type FileEntry = (usize, String, String, Color, usize, usize);
+type FileTree = BTreeMap<String, Vec<FileEntry>>;
+
 pub struct FileTreePane;
 
 impl FileTreePane {
@@ -33,9 +36,12 @@ impl FileTreePane {
         f.render_widget(content, area);
     }
 
-    fn build_tree_lines(metadata: &CommitMetadata, current_file_index: usize) -> Vec<Line<'static>> {
+    fn build_tree_lines(
+        metadata: &CommitMetadata,
+        current_file_index: usize,
+    ) -> Vec<Line<'static>> {
         // Build directory tree
-        let mut tree: BTreeMap<String, Vec<(usize, String, String, Color, usize, usize)>> = BTreeMap::new();
+        let mut tree: FileTree = BTreeMap::new();
 
         for (index, change) in metadata.changes.iter().enumerate() {
             let (status_char, color) = match change.status.as_str() {
@@ -62,16 +68,26 @@ impl FileTreePane {
             let parts: Vec<&str> = change.path.split('/').collect();
             if parts.len() == 1 {
                 // Root level file
-                tree.entry("".to_string())
-                    .or_insert_with(Vec::new)
-                    .push((index, change.path.clone(), status_char.to_string(), color, additions, deletions));
+                tree.entry("".to_string()).or_default().push((
+                    index,
+                    change.path.clone(),
+                    status_char.to_string(),
+                    color,
+                    additions,
+                    deletions,
+                ));
             } else {
                 // File in directory
                 let dir = parts[..parts.len() - 1].join("/");
                 let filename = parts[parts.len() - 1].to_string();
-                tree.entry(dir)
-                    .or_insert_with(Vec::new)
-                    .push((index, filename, status_char.to_string(), color, additions, deletions));
+                tree.entry(dir).or_default().push((
+                    index,
+                    filename,
+                    status_char.to_string(),
+                    color,
+                    additions,
+                    deletions,
+                ));
             }
         }
 
@@ -83,12 +99,12 @@ impl FileTreePane {
 
             // Add directory header if not root
             if !dir.is_empty() {
-                lines.push(Line::from(vec![
-                    Span::styled(
-                        format!("{}/", dir),
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                    ),
-                ]));
+                lines.push(Line::from(vec![Span::styled(
+                    format!("{}/", dir),
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                )]));
             }
 
             // Add files

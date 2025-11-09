@@ -27,8 +27,9 @@ impl TerminalPane {
                 .enumerate()
                 .map(|(idx, line)| {
                     let is_last_line = start_idx + idx == total_lines - 1;
-                    let show_cursor =
-                        is_last_line && engine.cursor_visible && engine.active_pane == ActivePane::Terminal;
+                    let show_cursor = is_last_line
+                        && engine.cursor_visible
+                        && engine.active_pane == ActivePane::Terminal;
 
                     if line.starts_with("$ ") {
                         // Command line - show in green with bold

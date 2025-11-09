@@ -63,7 +63,8 @@ pub struct Highlighter {
 impl Clone for Highlighter {
     fn clone(&self) -> Self {
         let mut new_parser = Parser::new();
-        let query = if let (Some(ref lang), Some(ref source)) = (&self.language, &self.query_source) {
+        let query = if let (Some(ref lang), Some(ref source)) = (&self.language, &self.query_source)
+        {
             let _ = new_parser.set_language(lang);
             Query::new(lang, source).ok()
         } else {
@@ -140,63 +141,62 @@ impl Highlighter {
         let mut cursor = QueryCursor::new();
         let mut matches = cursor.matches(query, tree.root_node(), source.as_bytes());
 
-        loop {
-            match matches.next() {
-                Some(query_match) => {
-                    for capture in query_match.captures {
-                        let node = capture.node;
-                        let capture_name = &query.capture_names()[capture.index as usize];
+        while let Some(query_match) = matches.next() {
+            for capture in query_match.captures {
+                let node = capture.node;
+                let capture_name = &query.capture_names()[capture.index as usize];
 
-                        // Handle dotted capture names like "keyword.function" -> "keyword"
-                        let base_name = capture_name.split('.').next().unwrap_or(capture_name);
+                // Handle dotted capture names like "keyword.function" -> "keyword"
+                let base_name = capture_name.split('.').next().unwrap_or(capture_name);
 
-                        let token_type = match base_name {
-                            "keyword" => TokenType::Keyword,
-                            "type" => TokenType::Type,
-                            "function" => TokenType::Function,
-                            "variable" => TokenType::Variable,
-                            "string" => TokenType::String,
-                            "number" => TokenType::Number,
-                            "comment" => TokenType::Comment,
-                            "operator" => TokenType::Operator,
-                            "punctuation" => TokenType::Punctuation,
-                            "constant" => TokenType::Constant,
-                            "parameter" => TokenType::Parameter,
-                            "property" => TokenType::Property,
-                            "label" => TokenType::Label,
-                            "character" => TokenType::String,
-                            "boolean" => TokenType::Constant,
-                            // Additional common capture names
-                            "namespace" | "module" => TokenType::Type,
-                            "constructor" => TokenType::Type,
-                            "method" => TokenType::Function,
-                            "macro" => TokenType::Function,
-                            "annotation" | "attribute" | "decorator" => TokenType::Keyword,
-                            "tag" => TokenType::Type,
-                            "escape" => TokenType::Operator,
-                            "delimiter" => TokenType::Punctuation,
-                            "special" => TokenType::Operator,
-                            "field" => TokenType::Property,
-                            "enum" | "struct" | "class" | "interface" | "trait" => TokenType::Type,
-                            "regexp" => TokenType::String,
-                            // Additional from all language queries
-                            "conditional" | "repeat" | "exception" | "include" | "storageclass" => TokenType::Keyword,
-                            "identifier" => TokenType::Variable,
-                            "float" => TokenType::Number,
-                            "none" => TokenType::Constant,
-                            // Skip internal/special markers
-                            "embedded" | "spell" | "__name__" | "_name" | "_op" | "_type" => continue,
-                            _ => continue,
-                        };
-
-                        spans.push(HighlightSpan {
-                            start: node.start_byte(),
-                            end: node.end_byte(),
-                            token_type,
-                        });
+                let token_type = match base_name {
+                    "keyword" => TokenType::Keyword,
+                    "type" => TokenType::Type,
+                    "function" => TokenType::Function,
+                    "variable" => TokenType::Variable,
+                    "string" => TokenType::String,
+                    "number" => TokenType::Number,
+                    "comment" => TokenType::Comment,
+                    "operator" => TokenType::Operator,
+                    "punctuation" => TokenType::Punctuation,
+                    "constant" => TokenType::Constant,
+                    "parameter" => TokenType::Parameter,
+                    "property" => TokenType::Property,
+                    "label" => TokenType::Label,
+                    "character" => TokenType::String,
+                    "boolean" => TokenType::Constant,
+                    // Additional common capture names
+                    "namespace" | "module" => TokenType::Type,
+                    "constructor" => TokenType::Type,
+                    "method" => TokenType::Function,
+                    "macro" => TokenType::Function,
+                    "annotation" | "attribute" | "decorator" => TokenType::Keyword,
+                    "tag" => TokenType::Type,
+                    "escape" => TokenType::Operator,
+                    "delimiter" => TokenType::Punctuation,
+                    "special" => TokenType::Operator,
+                    "field" => TokenType::Property,
+                    "enum" | "struct" | "class" | "interface" | "trait" => TokenType::Type,
+                    "regexp" => TokenType::String,
+                    // Additional from all language queries
+                    "conditional" | "repeat" | "exception" | "include" | "storageclass" => {
+                        TokenType::Keyword
                     }
-                }
-                None => break,
+                    "identifier" => TokenType::Variable,
+                    "float" => TokenType::Number,
+                    "none" => TokenType::Constant,
+                    // Skip internal/special markers
+                    "embedded" | "spell" | "__name__" | "_name" | "_op" | "_type" => {
+                        continue
+                    }
+                    _ => continue,
+                };
+
+                spans.push(HighlightSpan {
+                    start: node.start_byte(),
+                    end: node.end_byte(),
+                    token_type,
+                });
             }
         }
 

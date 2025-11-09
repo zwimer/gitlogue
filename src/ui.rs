@@ -115,7 +115,8 @@ impl<'a> UI<'a> {
                             // Random mode - schedule next commit
                             // Wait time proportional to speed (100x the typing speed)
                             self.state = UIState::WaitingForNext {
-                                resume_at: Instant::now() + Duration::from_millis(self.speed_ms * 100),
+                                resume_at: Instant::now()
+                                    + Duration::from_millis(self.speed_ms * 100),
                             };
                         } else {
                             // Single commit mode - quit
@@ -154,24 +155,24 @@ impl<'a> UI<'a> {
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Min(0),      // Main content area
-                Constraint::Length(3),   // Status bar
+                Constraint::Min(0),    // Main content area
+                Constraint::Length(3), // Status bar
             ])
             .split(size);
 
         let content_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints([
-                Constraint::Percentage(30),  // Left side (file tree)
-                Constraint::Percentage(70),  // Right side (editor + terminal)
+                Constraint::Percentage(30), // Left side (file tree)
+                Constraint::Percentage(70), // Right side (editor + terminal)
             ])
             .split(main_layout[0]);
 
         let right_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(80),  // Editor
-                Constraint::Percentage(20),  // Terminal
+                Constraint::Percentage(80), // Editor
+                Constraint::Percentage(20), // Terminal
             ])
             .split(content_layout[1]);
 
