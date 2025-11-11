@@ -201,8 +201,8 @@ impl FileTreePane {
         }
 
         let mut lines = Vec::new();
-        let mut current_line_index = None; // Wrap前の lines index (SelectableParagraph用)
-        let mut current_display_line_index = None; // Wrap後の表示行番号 (scroll計算用)
+        let mut current_line_index = None; // Pre-wrap line index for SelectableParagraph selection
+        let mut current_display_line_index = None; // Post-wrap display line index for scroll calculation
         let mut display_line_count = 0; // Track actual display lines including wrapping
         let sorted_dirs: Vec<_> = tree.keys().cloned().collect();
 
@@ -217,7 +217,7 @@ impl FileTreePane {
                 let dir_content_width = dir_text.width();
 
                 let dir_spans = vec![Span::styled(
-                    dir_text.clone(),
+                    dir_text,
                     Style::default()
                         .fg(theme.file_tree_directory)
                         .add_modifier(Modifier::BOLD),
@@ -240,8 +240,8 @@ impl FileTreePane {
 
                 // Track the line index of the current file (before adding the line)
                 if is_current {
-                    current_line_index = Some(lines.len()); // Wrap前の行番号
-                    current_display_line_index = Some(display_line_count); // Wrap後の行番号
+                    current_line_index = Some(lines.len()); // Pre-wrap line number
+                    current_display_line_index = Some(display_line_count); // Post-wrap line number
                 }
 
                 let indent = if dir.is_empty() { "" } else { "  " }.to_string();
@@ -275,7 +275,7 @@ impl FileTreePane {
                         Style::default().fg(*color).add_modifier(Modifier::BOLD),
                     ),
                     Span::styled(
-                        filename.clone(),
+                        filename.to_string(),
                         Style::default().fg(fg_color).add_modifier(modifier),
                     ),
                     Span::styled(
