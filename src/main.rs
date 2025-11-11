@@ -5,6 +5,7 @@ mod panes;
 mod syntax;
 mod theme;
 mod ui;
+mod widgets;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
