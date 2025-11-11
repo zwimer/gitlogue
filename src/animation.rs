@@ -1,4 +1,4 @@
-use crate::git::{CommitMetadata, DiffHunk, FileChange, LineChangeType};
+use crate::git::{CommitMetadata, DiffHunk, FileChange, FileStatus, LineChangeType};
 use crate::syntax::Highlighter;
 use rand::Rng;
 use std::cell::RefCell;
@@ -322,72 +322,104 @@ impl AnimationEngine {
 
         // Process all file changes
         for (index, change) in metadata.changes.iter().enumerate() {
-            // Skip excluded files (lock files and generated files)
-            if change.is_excluded {
-                // Show skip message for excluded files
-                self.steps.push(AnimationStep::Pause {
-                    duration_ms: (self.speed_ms as f64 * OPEN_FILE_PAUSE) as u64,
-                });
-                self.steps.push(AnimationStep::TerminalOutput {
-                    text: format!("📦 {} (skipped - generated file)", change.path),
-                });
-                self.steps.push(AnimationStep::Pause {
-                    duration_ms: (self.speed_ms as f64 * OPEN_CMD_PAUSE) as u64,
-                });
-                continue;
+            match (change.is_excluded, &change.status) {
+                // Skip excluded files (lock files and generated files)
+                (true, _) => {
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * OPEN_FILE_PAUSE) as u64,
+                    });
+                    self.steps.push(AnimationStep::TerminalOutput {
+                        text: format!("📦 {} (skipped - generated file)", change.path),
+                    });
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * OPEN_CMD_PAUSE) as u64,
+                    });
+                }
+                // For deleted files, skip editor animation and only run rm + git add
+                (false, FileStatus::Deleted) => {
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_PAUSE) as u64,
+                    });
+                    self.add_terminal_command(&format!("rm {}", change.path));
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
+                    });
+                    self.add_terminal_command(&format!("git add {}", change.path));
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
+                    });
+                }
+                // For renamed/moved files, skip editor animation and only run mv + git add
+                (false, FileStatus::Renamed) => {
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_PAUSE) as u64,
+                    });
+                    if let Some(old_path) = &change.old_path {
+                        self.add_terminal_command(&format!("mv {} {}", old_path, change.path));
+                        self.steps.push(AnimationStep::Pause {
+                            duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
+                        });
+                    }
+                    self.add_terminal_command(&format!("git add {}", change.path));
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
+                    });
+                }
+                // Normal files (Added, Modified, etc.) - full editor animation
+                (false, _) => {
+                    // Open file in editor
+                    if index == 0 {
+                        self.steps.push(AnimationStep::Pause {
+                            duration_ms: (self.speed_ms as f64 * OPEN_FILE_FIRST_PAUSE) as u64,
+                        });
+                    } else {
+                        self.steps.push(AnimationStep::Pause {
+                            duration_ms: (self.speed_ms as f64 * OPEN_FILE_PAUSE) as u64,
+                        });
+                    }
+                    // Show "Open File..." dialog and type the file path
+                    self.steps.push(AnimationStep::OpenFileDialogStart);
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * 5.0) as u64,
+                    });
+
+                    // Type each character of the file path
+                    for ch in change.path.chars() {
+                        self.steps.push(AnimationStep::DialogTypeChar { ch });
+                    }
+
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * OPEN_CMD_PAUSE) as u64,
+                    });
+
+                    // Add file switch step with both old and new content
+                    let old_content = change.old_content.clone().unwrap_or_default();
+                    let new_content = change.new_content.clone().unwrap_or_default();
+                    self.steps.push(AnimationStep::SwitchFile {
+                        file_index: index,
+                        old_content,
+                        new_content,
+                        path: change.path.clone(),
+                    });
+
+                    // Add pause before starting file animation
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * FILE_SWITCH_PAUSE) as u64,
+                    });
+
+                    // Generate animation steps for this file
+                    self.generate_steps_for_file(change);
+
+                    // Git add this file after editing
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_PAUSE) as u64,
+                    });
+                    self.add_terminal_command(&format!("git add {}", change.path));
+                    self.steps.push(AnimationStep::Pause {
+                        duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
+                    });
+                }
             }
-
-            // Open file in editor
-            if index == 0 {
-                self.steps.push(AnimationStep::Pause {
-                    duration_ms: (self.speed_ms as f64 * OPEN_FILE_FIRST_PAUSE) as u64,
-                });
-            } else {
-                self.steps.push(AnimationStep::Pause {
-                    duration_ms: (self.speed_ms as f64 * OPEN_FILE_PAUSE) as u64,
-                });
-            }
-            // Show "Open File..." dialog and type the file path
-            self.steps.push(AnimationStep::OpenFileDialogStart);
-            self.steps.push(AnimationStep::Pause {
-                duration_ms: (self.speed_ms as f64 * 5.0) as u64,
-            });
-
-            // Type each character of the file path
-            for ch in change.path.chars() {
-                self.steps.push(AnimationStep::DialogTypeChar { ch });
-            }
-
-            self.steps.push(AnimationStep::Pause {
-                duration_ms: (self.speed_ms as f64 * OPEN_CMD_PAUSE) as u64,
-            });
-
-            // Add file switch step with both old and new content
-            let old_content = change.old_content.clone().unwrap_or_default();
-            let new_content = change.new_content.clone().unwrap_or_default();
-            self.steps.push(AnimationStep::SwitchFile {
-                file_index: index,
-                old_content,
-                new_content,
-                path: change.path.clone(),
-            });
-
-            // Add pause before starting file animation
-            self.steps.push(AnimationStep::Pause {
-                duration_ms: (self.speed_ms as f64 * FILE_SWITCH_PAUSE) as u64,
-            });
-
-            // Generate animation steps for this file
-            self.generate_steps_for_file(change);
-
-            // Git add this file after editing
-            self.steps.push(AnimationStep::Pause {
-                duration_ms: (self.speed_ms as f64 * GIT_ADD_PAUSE) as u64,
-            });
-            self.add_terminal_command(&format!("git add {}", change.path));
-            self.steps.push(AnimationStep::Pause {
-                duration_ms: (self.speed_ms as f64 * GIT_ADD_CMD_PAUSE) as u64,
-            });
         }
 
         // Git commit
