@@ -82,11 +82,6 @@ See the [Usage Guide](docs/usage.md) for detailed examples and advanced features
 
 gitlogue can be configured via `~/.config/gitlogue/config.toml`. You can set default theme, typing speed, and background preferences.
 
-```bash
-# Set default theme
-gitlogue theme set dracula
-```
-
 See the [Configuration Guide](docs/configuration.md) for detailed options and examples.
 
 ## Supported Languages
