@@ -64,7 +64,7 @@ anyhow = "1.0"
 streaming-iterator = "0.1"
 ctrlc = "3.4"
 dirs = "5.0"
-unicode-width = "0.1"
+unicode-width = "0.2"
 
 [lib]
 name = "gitlogue"
