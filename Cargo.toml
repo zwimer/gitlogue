@@ -54,6 +54,7 @@ tree-sitter-json = "0.24"
 tree-sitter-md = "0.5"
 tree-sitter-yaml = "0.7"
 tree-sitter-xml = "0.7"
+tree-sitter-bash = "0.25"
 chrono = "0.4"
 rand = "0.9"
 serde = { version = "1.0", features = ["derive"] }
