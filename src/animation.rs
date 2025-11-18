@@ -795,16 +795,16 @@ impl AnimationEngine {
 
     fn execute_step(&mut self, step: AnimationStep) {
         // Calculate delay for next step with randomization for typing steps
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         self.next_step_delay = match &step {
             AnimationStep::InsertChar { .. } | AnimationStep::TerminalTypeChar { .. } => {
                 // Add 70-130% variation to typing speed
-                let variation = rng.gen_range(0.7..=1.3);
+                let variation = rng.random_range(0.7..=1.3);
                 ((self.speed_ms as f64) * variation) as u64
             }
             AnimationStep::DialogTypeChar { .. } => {
                 // Dialog typing is slower (2x speed with variation)
-                let variation = rng.gen_range(0.7..=1.3);
+                let variation = rng.random_range(0.7..=1.3);
                 ((self.speed_ms as f64) * 2.0 * variation) as u64
             }
             _ => {

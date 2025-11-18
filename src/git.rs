@@ -246,7 +246,7 @@ impl GitRepository {
 
         let candidates = cache.as_ref().unwrap();
         let selected_oid = candidates
-            .get(rand::thread_rng().gen_range(0..candidates.len()))
+            .get(rand::rng().random_range(0..candidates.len()))
             .context("Failed to select random commit")?;
 
         let commit = self.repo.find_commit(*selected_oid)?;
