@@ -45,6 +45,8 @@ const EXCLUDED_FILES: &[&str] = &[
     "buildscript-gradle.lockfile",
     // Scala
     "build.sbt.lock",
+    // Bazel
+    "MODULE.bazel.lock",
 ];
 
 // File patterns to exclude from diff animation
@@ -710,6 +712,8 @@ mod tests {
         assert!(should_exclude_file("buildscript-gradle.lockfile"));
         // Scala
         assert!(should_exclude_file("build.sbt.lock"));
+        // Bazel
+        assert!(should_exclude_file("MODULE.bazel.lock"));
     }
 
     #[test]
