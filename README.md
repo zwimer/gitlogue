@@ -95,6 +95,11 @@ gitlogue --commit HEAD~10..HEAD --loop
 # Filter commits by author or email (case-insensitive partial match)
 gitlogue --author "john"
 
+# Filter commits by date
+gitlogue --after "2024-01-01"
+gitlogue --before "1 week ago"
+gitlogue --after "2024-06-01" --before "2024-07-01"
+
 # Use a different theme
 gitlogue --theme dracula
 

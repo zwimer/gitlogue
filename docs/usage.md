@@ -98,6 +98,31 @@ When using author filtering:
 - Use `--loop` to replay continuously
 - Use `--order` to change playback order
 
+### `--before <DATE>` / `--after <DATE>`
+
+Filter commits by date. Supports absolute dates and relative expressions.
+
+```bash
+# Absolute dates
+gitlogue --after "2024-01-01"
+gitlogue --before "2024-12-31"
+
+# Relative dates
+gitlogue --after "1 week ago"
+gitlogue --before "yesterday"
+gitlogue --after "3 months ago"
+
+# Date range
+gitlogue --after "2024-06-01" --before "2024-07-01"
+
+# Combine with author filter
+gitlogue --author "john" --after "2024-01-01"
+```
+
+Supported date formats:
+- Absolute: `2024-01-01`, `January 15, 2024`, `15 Jan 2024`
+- Relative: `yesterday`, `3 days ago`, `1 week ago`, `2 months ago`, `1 year ago`
+
 ### `--theme <NAME>`
 
 Select a theme for the UI.

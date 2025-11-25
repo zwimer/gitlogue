@@ -106,6 +106,20 @@ pub struct Args {
     pub author: Option<String>,
 
     #[arg(
+        long,
+        value_name = "DATE",
+        help = "Show commits before this date (e.g., '2024-01-01', '1 week ago', 'yesterday')"
+    )]
+    pub before: Option<String>,
+
+    #[arg(
+        long,
+        value_name = "DATE",
+        help = "Show commits after this date (e.g., '2024-01-01', '1 week ago', 'yesterday')"
+    )]
+    pub after: Option<String>,
+
+    #[arg(
         short = 'i',
         long = "ignore",
         value_name = "PATTERN",
@@ -230,13 +244,24 @@ fn main() -> Result<()> {
         repo.set_author_filter(args.author.clone());
     }
 
+    // Set date filters if specified
+    if let Some(ref before_str) = args.before {
+        let before_date = git::parse_date(before_str)?;
+        repo.set_before_filter(Some(before_date));
+    }
+    if let Some(ref after_str) = args.after {
+        let after_date = git::parse_date(after_str)?;
+        repo.set_after_filter(Some(after_date));
+    }
+
     let is_commit_specified = args.commit.is_some();
     let is_range_mode = args
         .commit
         .as_ref()
         .map(|c| c.contains(".."))
         .unwrap_or(false);
-    let is_author_filtered = args.author.is_some();
+    let is_filtered =
+        args.author.is_some() || args.before.is_some() || args.after.is_some();
 
     // Load config: CLI arguments > config file > defaults
     let config = Config::load()?;
@@ -265,7 +290,7 @@ fn main() -> Result<()> {
     });
 
     // Filtered modes default to asc (chronological) if not explicitly specified
-    if (is_range_mode || is_author_filtered) && args.order.is_none() {
+    if (is_range_mode || is_filtered) && args.order.is_none() {
         order = PlaybackOrder::Asc;
     }
 
@@ -300,8 +325,8 @@ fn main() -> Result<()> {
     };
 
     // Create UI with repository reference
-    // Filtered modes (range/author) always need repo ref for iteration
-    let repo_ref = if is_range_mode || is_author_filtered {
+    // Filtered modes (range/author/date) always need repo ref for iteration
+    let repo_ref = if is_range_mode || is_filtered {
         Some(&repo)
     } else if is_commit_specified && !loop_playback {
         None

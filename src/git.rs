@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local, Utc};
+use chrono_english::{parse_date_string, Dialect};
 use git2::{Commit as Git2Commit, Delta, DiffOptions, Oid, Repository};
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use rand::Rng;
@@ -130,6 +131,39 @@ fn matches_author(commit: &Git2Commit, pattern: &str) -> bool {
     name.to_lowercase().contains(&pattern_lower) || email.to_lowercase().contains(&pattern_lower)
 }
 
+// Parse a date string using chrono-english (supports Git-like formats)
+pub fn parse_date(input: &str) -> Result<DateTime<Utc>> {
+    let now = Local::now();
+
+    parse_date_string(input, now, Dialect::Us)
+        .map(|dt| dt.with_timezone(&Utc))
+        .with_context(|| format!("Invalid date format: '{}'. Use formats like '2024-01-01', '1 week ago', 'yesterday'", input))
+}
+
+// Check if a commit date is within the specified date range
+fn matches_date_filter(
+    commit: &Git2Commit,
+    before: Option<&DateTime<Utc>>,
+    after: Option<&DateTime<Utc>>,
+) -> bool {
+    let timestamp = commit.author().when().seconds();
+    let commit_date = DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now);
+
+    if let Some(before_date) = before {
+        if commit_date >= *before_date {
+            return false;
+        }
+    }
+
+    if let Some(after_date) = after {
+        if commit_date <= *after_date {
+            return false;
+        }
+    }
+
+    true
+}
+
 pub struct GitRepository {
     repo: Repository,
     commit_cache: RefCell<Option<Vec<Oid>>>,
@@ -138,6 +172,8 @@ pub struct GitRepository {
     commit_index: RefCell<usize>,
     commit_range: RefCell<Option<Vec<Oid>>>,
     author_filter: Option<String>,
+    before_filter: Option<DateTime<Utc>>,
+    after_filter: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone)]
@@ -264,6 +300,8 @@ impl GitRepository {
             commit_index: RefCell::new(0),
             commit_range: RefCell::new(None),
             author_filter: None,
+            before_filter: None,
+            after_filter: None,
         })
     }
 
@@ -351,6 +389,14 @@ impl GitRepository {
         self.author_filter = author;
     }
 
+    pub fn set_before_filter(&mut self, before: Option<DateTime<Utc>>) {
+        self.before_filter = before;
+    }
+
+    pub fn set_after_filter(&mut self, after: Option<DateTime<Utc>>) {
+        self.after_filter = after;
+    }
+
     pub fn set_commit_range(&self, range: &str) -> Result<()> {
         let commits = self.parse_commit_range(range)?;
         *self.commit_range.borrow_mut() = Some(commits);
@@ -416,7 +462,7 @@ impl GitRepository {
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
-    // Collect non-merge commits from a revwalk, applying author filter if set
+    // Collect non-merge commits from a revwalk, applying author and date filters if set
     fn collect_commits_from_revwalk(
         &self,
         revwalk: git2::Revwalk,
@@ -431,14 +477,24 @@ impl GitRepository {
                             continue;
                         }
                     }
+                    if !matches_date_filter(
+                        &commit,
+                        self.before_filter.as_ref(),
+                        self.after_filter.as_ref(),
+                    ) {
+                        continue;
+                    }
                     commits.push(oid);
                 }
             }
         }
 
         if commits.is_empty() {
-            if self.author_filter.is_some() {
-                anyhow::bail!("No commits found matching the author filter {}", context);
+            if self.author_filter.is_some()
+                || self.before_filter.is_some()
+                || self.after_filter.is_some()
+            {
+                anyhow::bail!("No commits found matching the filters {}", context);
             }
             anyhow::bail!("No non-merge commits found {}", context);
         }
