@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-11-25
+
+### ✨ Features
+
+- feat: add author filter option for commit display ([cfda74d](https://github.com/unhappychoice/gitlogue/commit/cfda74d))
+- feat: move cursor to first non-whitespace position during scroll ([8cf6a46](https://github.com/unhappychoice/gitlogue/commit/8cf6a46))
+- feat: skip cursor movement to indentation ([9ef01e2](https://github.com/unhappychoice/gitlogue/commit/9ef01e2))
+- feat: introduced the pattern matching for ignoring parameters ([5350424](https://github.com/unhappychoice/gitlogue/commit/5350424))
+- feat: add MODULE.bazel.lock to excluded files ([420c57a](https://github.com/unhappychoice/gitlogue/commit/420c57a))
+
+### 🐛 Bug Fixes
+
+- fix: default to asc order when --author is specified ([72ebcee](https://github.com/unhappychoice/gitlogue/commit/72ebcee))
+- fix: add validation for author filter input to prevent empty patterns ([80e54c0](https://github.com/unhappychoice/gitlogue/commit/80e54c0))
+- fix: add perl to nativeBuildInputs for openssl-sys build ([f3d7672](https://github.com/unhappychoice/gitlogue/commit/f3d7672))
+- fix: update cli name and version ([7a07511](https://github.com/unhappychoice/gitlogue/commit/7a07511))
+- fix: add other typescript extensions (#84) ([a2a614d](https://github.com/unhappychoice/gitlogue/commit/a2a614d))
+
+### 📝 Other Changes
+
+- chore: bump version to v0.4.0 ([342a19f](https://github.com/unhappychoice/gitlogue/commit/342a19f))
+- docs: add behavior notes for --author filtering ([12cf5a1](https://github.com/unhappychoice/gitlogue/commit/12cf5a1))
+- refactor: extract magic numbers and fix step discontinuity ([e1624aa](https://github.com/unhappychoice/gitlogue/commit/e1624aa))
+- perf: improve scrolling speed in large files ([f39f158](https://github.com/unhappychoice/gitlogue/commit/f39f158))
+- Use last supported LTS for glibc version in Linux builds & use arm runners (#98) ([cb45144](https://github.com/unhappychoice/gitlogue/commit/cb45144))
+- refactor: use Cargo.toml version in CLI ([e330c16](https://github.com/unhappychoice/gitlogue/commit/e330c16))
+- created a flake for nixos users (#92) ([3f24f29](https://github.com/unhappychoice/gitlogue/commit/3f24f29))
+- test: update ignore patterns test to use SVG instead of PNG ([2c83a6f](https://github.com/unhappychoice/gitlogue/commit/2c83a6f))
+- docs: add documentation for ignore patterns feature ([caa25ef](https://github.com/unhappychoice/gitlogue/commit/caa25ef))
+- test: verifying working omission of patterns ([25a260b](https://github.com/unhappychoice/gitlogue/commit/25a260b))
+- chore: adding dependency of package ([b122734](https://github.com/unhappychoice/gitlogue/commit/b122734))
+- updating the dependency and config ([6a6d8d5](https://github.com/unhappychoice/gitlogue/commit/6a6d8d5))
+
+
 ## [0.3.0] - 2025-11-20
 
 ### ✨ Features
@@ -20,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 📝 Other Changes
 
-- chore: bump version to v0.3.0 ([28e97f1](https://github.com/unhappychoice/gitlogue/commit/28e97f1))
+- chore: bump version to v0.3.0 ([1f68771](https://github.com/unhappychoice/gitlogue/commit/1f68771))
 - style: apply cargo fmt ([00c07e6](https://github.com/unhappychoice/gitlogue/commit/00c07e6))
 - refactor: reject symmetric difference operator in commit range ([4ccc02d](https://github.com/unhappychoice/gitlogue/commit/4ccc02d))
 - docs: update documentation for commit range feature ([1dd81be](https://github.com/unhappychoice/gitlogue/commit/1dd81be))
