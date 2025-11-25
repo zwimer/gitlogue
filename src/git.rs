@@ -120,6 +120,17 @@ pub fn should_exclude_file(path: &str) -> bool {
     false
 }
 
+// Check if a commit matches the author filter pattern (case-insensitive partial match)
+fn matches_author(commit: &Git2Commit, pattern: &str) -> bool {
+    let author = commit.author();
+    let name = author.name().unwrap_or("");
+    let email = author.email().unwrap_or("");
+    let pattern_lower = pattern.to_lowercase();
+
+    name.to_lowercase().contains(&pattern_lower)
+        || email.to_lowercase().contains(&pattern_lower)
+}
+
 pub struct GitRepository {
     repo: Repository,
     commit_cache: RefCell<Option<Vec<Oid>>>,
@@ -127,6 +138,7 @@ pub struct GitRepository {
     // These modes are mutually exclusive based on CLI arguments.
     commit_index: RefCell<usize>,
     commit_range: RefCell<Option<Vec<Oid>>>,
+    author_filter: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -252,6 +264,7 @@ impl GitRepository {
             commit_cache: RefCell::new(None),
             commit_index: RefCell::new(0),
             commit_range: RefCell::new(None),
+            author_filter: None,
         })
     }
 
@@ -267,35 +280,16 @@ impl GitRepository {
     }
 
     pub fn random_commit(&self) -> Result<CommitMetadata> {
-        // Check if cache exists, if not populate it
-        let mut cache = self.commit_cache.borrow_mut();
-        if cache.is_none() {
-            let mut revwalk = self.repo.revwalk()?;
-            revwalk.push_head()?;
+        self.populate_cache()?;
 
-            let mut candidates = Vec::new();
-            for oid in revwalk.filter_map(|oid| oid.ok()) {
-                if let Ok(commit) = self.repo.find_commit(oid) {
-                    if commit.parent_count() <= 1 {
-                        candidates.push(oid);
-                    }
-                }
-            }
-
-            if candidates.is_empty() {
-                anyhow::bail!("No non-merge commits found in repository");
-            }
-
-            *cache = Some(candidates);
-        }
-
+        let cache = self.commit_cache.borrow();
         let candidates = cache.as_ref().unwrap();
+
         let selected_oid = candidates
             .get(rand::rng().random_range(0..candidates.len()))
             .context("Failed to select random commit")?;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(cache); // Release the borrow before calling extract_metadata_with_changes
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
@@ -323,8 +317,6 @@ impl GitRepository {
         *index += 1;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(index);
-        drop(cache);
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
@@ -349,13 +341,15 @@ impl GitRepository {
         *index += 1;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(index);
-        drop(cache);
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
     pub fn reset_index(&self) {
         *self.commit_index.borrow_mut() = 0;
+    }
+
+    pub fn set_author_filter(&mut self, author: Option<String>) {
+        self.author_filter = author;
     }
 
     pub fn set_commit_range(&self, range: &str) -> Result<()> {
@@ -382,8 +376,6 @@ impl GitRepository {
         *index += 1;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(index);
-        drop(range);
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
@@ -406,8 +398,6 @@ impl GitRepository {
         *index += 1;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(index);
-        drop(range);
         Self::extract_metadata_with_changes(&self.repo, &commit)
     }
 
@@ -424,8 +414,40 @@ impl GitRepository {
             .context("Failed to select random commit")?;
 
         let commit = self.repo.find_commit(*selected_oid)?;
-        drop(range);
         Self::extract_metadata_with_changes(&self.repo, &commit)
+    }
+
+    // Collect non-merge commits from a revwalk, applying author filter if set
+    fn collect_commits_from_revwalk(
+        &self,
+        revwalk: git2::Revwalk,
+        context: &str,
+    ) -> Result<Vec<Oid>> {
+        let mut commits = Vec::new();
+        for oid in revwalk.filter_map(|oid| oid.ok()) {
+            if let Ok(commit) = self.repo.find_commit(oid) {
+                if commit.parent_count() <= 1 {
+                    if let Some(ref pattern) = self.author_filter {
+                        if !matches_author(&commit, pattern) {
+                            continue;
+                        }
+                    }
+                    commits.push(oid);
+                }
+            }
+        }
+
+        if commits.is_empty() {
+            if self.author_filter.is_some() {
+                anyhow::bail!(
+                    "No commits found matching the author filter {}",
+                    context
+                );
+            }
+            anyhow::bail!("No non-merge commits found {}", context);
+        }
+
+        Ok(commits)
     }
 
     fn parse_commit_range(&self, range: &str) -> Result<Vec<Oid>> {
@@ -467,15 +489,7 @@ impl GitRepository {
             revwalk.hide(start_oid)?;
         }
 
-        let mut commits = Vec::new();
-        for oid in revwalk.filter_map(|oid| oid.ok()) {
-            if let Ok(commit) = self.repo.find_commit(oid) {
-                if commit.parent_count() <= 1 {
-                    commits.push(oid);
-                }
-            }
-        }
-
+        let mut commits = self.collect_commits_from_revwalk(revwalk, "in range")?;
         commits.reverse();
         Ok(commits)
     }
@@ -486,19 +500,7 @@ impl GitRepository {
             let mut revwalk = self.repo.revwalk()?;
             revwalk.push_head()?;
 
-            let mut candidates = Vec::new();
-            for oid in revwalk.filter_map(|oid| oid.ok()) {
-                if let Ok(commit) = self.repo.find_commit(oid) {
-                    if commit.parent_count() <= 1 {
-                        candidates.push(oid);
-                    }
-                }
-            }
-
-            if candidates.is_empty() {
-                anyhow::bail!("No non-merge commits found in repository");
-            }
-
+            let candidates = self.collect_commits_from_revwalk(revwalk, "in repository")?;
             *cache = Some(candidates);
         }
         Ok(())

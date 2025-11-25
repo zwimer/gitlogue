@@ -93,6 +93,14 @@ pub struct Args {
     pub license: bool,
 
     #[arg(
+        short = 'a',
+        long,
+        value_name = "PATTERN",
+        help = "Filter commits by author name or email (partial match, case-insensitive)"
+    )]
+    pub author: Option<String>,
+
+    #[arg(
         short = 'i',
         long = "ignore",
         value_name = "PATTERN",
@@ -210,7 +218,12 @@ fn main() -> Result<()> {
     }
 
     let repo_path = args.validate()?;
-    let repo = GitRepository::open(&repo_path)?;
+    let mut repo = GitRepository::open(&repo_path)?;
+
+    // Set author filter if specified
+    if args.author.is_some() {
+        repo.set_author_filter(args.author.clone());
+    }
 
     let is_commit_specified = args.commit.is_some();
     let is_range_mode = args

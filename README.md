@@ -92,6 +92,9 @@ gitlogue --commit abc123 --loop
 # Loop through a commit range
 gitlogue --commit HEAD~10..HEAD --loop
 
+# Filter commits by author or email (case-insensitive partial match)
+gitlogue --author "john"
+
 # Use a different theme
 gitlogue --theme dracula
 
@@ -111,7 +114,7 @@ gitlogue theme list
 gitlogue theme set dracula
 
 # Combine options
-gitlogue --commit HEAD~5 --theme nord --speed 15 --ignore "*.ipynb"
+gitlogue --commit HEAD~5 --author "john" --theme nord --speed 15 --ignore "*.ipynb"
 ```
 
 ## Configuration

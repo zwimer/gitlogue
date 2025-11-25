@@ -75,6 +75,26 @@ When using commit ranges:
 - Merge commits are automatically excluded
 - Use `--loop` to replay the range continuously
 
+### `--author <PATTERN>` / `-a <PATTERN>`
+
+Filter commits by author name or email address. The filter performs a case-insensitive partial match against both the author's name and email.
+
+```bash
+# Filter by name
+gitlogue --author "John"
+gitlogue -a "jane"
+
+# Filter by email
+gitlogue --author "@example.com"
+gitlogue -a "john.doe@"
+
+# Loop your own commits
+gitlogue --author "alice" --loop
+```
+
+This is useful for:
+- Replaying only your own commits
+
 ### `--theme <NAME>`
 
 Select a theme for the UI.
