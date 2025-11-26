@@ -145,23 +145,23 @@ fn matches_date_filter(
     commit: &Git2Commit,
     before: Option<&DateTime<Utc>>,
     after: Option<&DateTime<Utc>>,
-) -> bool {
+) -> Result<bool> {
     let timestamp = commit.author().when().seconds();
-    let commit_date = DateTime::from_timestamp(timestamp, 0).unwrap_or_else(Utc::now);
+    let commit_date = DateTime::from_timestamp(timestamp, 0).context("Invalid commit timestamp")?;
 
     if let Some(before_date) = before {
         if commit_date > *before_date {
-            return false;
+            return Ok(false);
         }
     }
 
     if let Some(after_date) = after {
         if commit_date < *after_date {
-            return false;
+            return Ok(false);
         }
     }
 
-    true
+    Ok(true)
 }
 
 pub struct GitRepository {
@@ -481,7 +481,7 @@ impl GitRepository {
                         &commit,
                         self.before_filter.as_ref(),
                         self.after_filter.as_ref(),
-                    ) {
+                    )? {
                         continue;
                     }
                     commits.push(oid);
